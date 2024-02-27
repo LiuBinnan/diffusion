@@ -110,7 +110,7 @@ class AttentionBlock(nn.Module):
         width = x.shape[-1]
         x = rearrange(x, 'b c h w -> b (h w) c')
         qkv = self.proj(x)
-        qkv = rearrange(qkv, 'b s (h d n) -> b s h (d n)', d = self.dim_head, n = 3)
+        qkv = rearrange(qkv, 'b s (h d) -> b s h d', h = self.heads)
         q, k, v = th.chunk(qkv, 3, dim=-1)
         weight = th.einsum('b s h d, b t h d -> b s t h', q, k) * self.scale
         weight = weight.softmax(dim=2)
