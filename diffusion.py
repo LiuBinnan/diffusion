@@ -102,7 +102,55 @@ class Diffusion:
             with th.no_grad():
                 img = self.p_sample(model, img, t)
                 yield img
+    
+    def ddim_sample(self, model, x, t, eta = 0.0):
+        eps = model(x, t)
+        x_start = self._predict_xstart_from_eps(x, t, eps)
+        alpha_bar = _extract_into_tensor(self.alphas_cumprod, t, x.shape)
+        alpha_bar_prev = _extract_into_tensor(self.alphas_cumprod_prev, t, x.shape)
+        sigma = eta * (
+            th.sqrt((1.0 - alpha_bar_prev) / (1.0 - alpha_bar)) *
+            th.sqrt(1.0 - alpha_bar / alpha_bar_prev)
+        )
+        mean = (th.sqrt(alpha_bar_prev) * x_start + 
+                th.sqrt(1.0 - alpha_bar_prev - sigma ** 2) * eps)
+        noise = th.randn_like(x)
+        nonzero_mask = (
+            (t != 0).float().view(-1, *([1] * (len(x.shape) - 1)))
+        )  # no noise when t == 0
+        return mean + nonzero_mask * sigma * noise
+    
+    # eta = 0.0 for ddim inversion
+    def ddim_reverse_sample(self, model, x, t):
+        eps = model(x, t)
+        x_start = self._predict_xstart_from_eps(x, t, eps)
+        alpha_bar_next = _extract_into_tensor(self.alphas_cumprod_next, t, x.shape)
+        mean = (th.sqrt(alpha_bar_next) * x_start + 
+                th.sqrt(1.0 - alpha_bar_next) * eps)
+        return mean
 
+    def ddim_sample_loop(self, model, shape, noise = None, progress = False, eta = 0.0):
+        for sample in self.ddim_sample_loop_progressive(model, shape, noise, progress, eta):
+            final = sample
+        return final
+
+    def ddim_sample_loop_progressive(self, model, shape, noise = None, progress = False, eta = 0.0):
+        device = next(model.parameters()).device
+        if noise is not None:
+            img = noise
+        else:
+            img = th.randn(*shape, device=device)
+        indices = list(range(self.num_timesteps))[::-1]
+
+        if progress:
+            from tqdm.auto import tqdm
+            indices = tqdm(indices)
+
+        for i in indices:
+            t = th.tensor([i] * shape[0], device=device)
+            with th.no_grad():
+                img = self.ddim_sample(model, img, t, eta)
+                yield img
 
 
 

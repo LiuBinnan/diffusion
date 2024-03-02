@@ -1,10 +1,17 @@
-from unet import UNet
+from unet_ import UNet
 from diffusion import Diffusion, beta_schedule
 import torch as th
 from torchvision import transforms
 import matplotlib.pyplot as plt
 import numpy as np
 from einops import rearrange
+from diffusers import DDPMPipeline
+
+# image_pipe = DDPMPipeline.from_pretrained("google/ddpm-cifar10-32")
+# image_pipe.to("cuda")
+# images = image_pipe().images
+# plt.imshow(images[0])
+# plt.show()
 
 # channels = 3
 # device = th.device('cuda' if th.cuda.is_available() else 'cpu')
@@ -13,7 +20,7 @@ from einops import rearrange
 # shape = (16, 3, 32, 32)
 # betas = beta_schedule(1000)
 # diff = Diffusion(betas)
-# imgs = diff.p_sample_loop(model, shape, progress=True)
+# imgs = diff.ddim_sample_loop(model, shape, progress=True)
 # reverse_transform = transforms.Compose([
 #     transforms.Lambda(lambda t: (t + 1) / 2),
 #     transforms.Lambda(lambda t: np.transpose(t, (0, 2, 3, 1))), # BCHW to BHWC
@@ -22,8 +29,7 @@ from einops import rearrange
 # ])
 # imgs = reverse_transform(imgs.cpu().numpy())
 # np.save("image.npy",imgs)
-imgs = np.load("image.npy")
-imgs = rearrange(imgs, 'b h w c -> h (w b) c')
+# imgs = np.load("image.npy")
 
 # # 设置子图的行数和列数
 # rows = 4
@@ -39,6 +45,4 @@ imgs = rearrange(imgs, 'b h w c -> h (w b) c')
 #         axs[i, j].imshow(imgs[index])
 #         axs[i, j].axis('off')  # 关闭坐标轴
 
-# # 展示图形
-plt.imshow(imgs)
-plt.show()
+# plt.show()
